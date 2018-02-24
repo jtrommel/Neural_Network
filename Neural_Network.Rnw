@@ -1,0 +1,171 @@
+\documentclass{tufte-book}
+\usepackage{graphicx}  % werken met figuren
+\usepackage{gensymb} % werken met wetenschappelijke eenheden\usepackage{geometry}
+\usepackage{changepage} % http://ctan.org/pkg/changepage
+\usepackage[dutch,british]{babel} % instelling van de taal (woordsplitsing, spellingscontrole)
+\usepackage[parfill]{parskip} % Paragrafen gescheiden door witte lijn en geen inspringing
+\usepackage[font=small,skip=3pt]{caption} % Minder ruimte tussen figuur/table en ondertitel. Ondertitel klein
+\usepackage{capt-of}
+\usepackage{indentfirst}
+\setlength{\parindent}{0.7cm}
+\usepackage{enumitem} % Laat enumerate werken met letters
+\usepackage{url}
+\usepackage{lipsum}
+\setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio}
+% Prints a trailing space in a smart way.
+\usepackage{xspace}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+
+% Alter some LaTeX defaults for better treatment of figures:
+% See p.105 of "TeX Unbound" for suggested values.
+% See pp. 199-200 of Lamport's "LaTeX" book for details.
+%   General parameters, for ALL pages:
+    \renewcommand{\topfraction}{0.9}	% max fraction of floats at top
+    \renewcommand{\bottomfraction}{0.9}	% max fraction of floats at bottom
+%   Parameters for TEXT pages (not float pages):
+    \setcounter{topnumber}{2}
+    \setcounter{bottomnumber}{2}
+    \setcounter{totalnumber}{4}     % 2 may work better
+    \renewcommand{\textfraction}{0.1}	% allow minimal text w. figs
+%   Parameters for FLOAT pages (not text pages):
+    \renewcommand{\floatpagefraction}{0.8}	% require fuller float pages
+% N.B.: floatpagefraction MUST be less than topfraction !!
+\setcounter{secnumdepth}{3}
+
+\newcommand{\tthdump}[1]{#1}
+
+\newcommand{\openepigraph}[2]{
+  \begin{fullwidth}
+  \sffamily\large
+    \begin{doublespace}
+      \noindent\allcaps{#1}\\ % epigraph
+      \noindent\allcaps{#2} % author
+    \end{doublespace}
+  \end{fullwidth}
+}
+
+
+\usepackage{makeidx}
+\makeindex
+
+\title{Neural Network}
+\author{Jan Trommelmans}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE,prefix.string=NN}
+\setkeys{Gin}{width=1.1\marginparwidth} %% Sweave
+
+<<echo=FALSE>>=
+library(tidyverse)
+@
+
+% Setting the ggplot theme:
+<<echo=FALSE>>=
+JT.theme <- theme(panel.border = element_rect(fill = NA, colour = "gray10"),
+                  panel.background = element_blank(),
+                  panel.grid.major = element_line(colour = "gray85"),
+                  panel.grid.minor = element_line(colour = "gray85"),
+                  panel.grid.major.x = element_line(colour = "gray85"),
+                  axis.text = element_text(size = 8 , face = "bold"),
+                  axis.title = element_text(size = 9 , face = "bold"),
+                  plot.title = element_text(size = 12 , face = "bold"),
+                  strip.text = element_text(size = 8 , face = "bold"),
+                  strip.background = element_rect(colour = "black"),
+                  legend.text = element_text(size = 8),
+                  legend.title = element_text(size = 9 , face = "bold"),
+                  legend.background = element_rect(fill = "white"),
+                  legend.key = element_rect(fill = "white"))
+@
+
+% Functions
+
+\frontmatter
+\chapter*{Neural Network Building}
+
+\chapter*{Introduction}
+
+\mainmatter
+
+\chapter{Article David Selby}
+
+\section{Logistic regression}
+
+What's a logistic regression model? Suppose we want to build a machine that classifies objects in two groups, for example ‘hot dog’ and ‘not hot dog’. We will say $Y_{i}=1$ if object i is a hot dog, and $Y_{i}=0$ otherwise. A logistic regression model estimates these odds,
+
+\begin{equation}
+odds(Y=1)=\frac{P[Y=1]}{P[Y=0]}=\frac{P[Y=1]}{1-P[Y=1]}
+\end{equation}
+
+and for mathematical and computational reasons we take the natural logarithm of the same — the log odds. As a generalised linear model, the response (the log odds) is a linear combination of the parameters and the covariates,
+
+\begin{equation}
+log-odds(Y=1)=X*\beta 
+\end{equation}
+
+where X is the design matrix and $\beta$ is a vector of parameters to be found.
+
+Classical statistical inference involves looking for a parameter estimate, $\hat{\beta}$, that maximises the likelihood of the observations given the parameters. For our hot dog classification problem, the likelihood function is
+
+\begin{equation}
+\mathcal{L}=\prod_{i}P[Y_{i}=1]^{y_{i}}*P[Y_{i}=0]^{(1-y_{i})}
+\end{equation}
+
+or, taking logs,
+
+\begin{equation}
+log \mathcal{L}=\sum_{i}\left[ y_{i}*log(P[Y_{i}=1]) + (1-y_{i})*log(P[Y_{i}=0]) \right]
+\end{equation}
+
+I have digitized their sample set\sidenote{WebDigitizer}.
+
+<<label=hotdog_data,fig=TRUE,include=FALSE, echo=FALSE>>=
+hotdog <- read.csv("data/hotdog.csv", header=TRUE, sep=";", dec=".", na.strings="NA")
+ggplot(data=hotdog) +
+  geom_point(aes(x = x1, y = x2, colour = class)) +
+  labs(title="Dataset hotdog") +
+  JT.theme
+@
+
+\begin{marginfigure}
+\includegraphics[width=1\textwidth]{NN-hotdog_data}
+\caption{}
+\label{fig:hotdog_data}
+\setfloatalignment{b}% forces caption to be bottom-aligned
+\end{marginfigure}
+
+Fitting a logistic regression model in R is easy:
+
+<<>>=
+logreg <- glm(class ~x1 + x2, family=binomial, data=hotdog)
+summary(logreg)
+@
+
+We make a grid (''rooster" in Dutch) and calculate the value of that gridpoint based on the coordinates x1 and x2 and the function given by the logistic regression model. Negative values are classed as ''not hot dog", positive values as ''hot dog". It clearly is a poor model.
+
+<<label=logreg1,fig=TRUE,include=FALSE, echo=FALSE>>=
+rooster <- expand.grid(x1=seq(min(hotdog$x1 - 1),
+                              max(hotdog$x1 + 1),
+                              by = 0.25),
+                       x2=seq(min(hotdog$x2 - 1),
+                              max(hotdog$x2 + 1),
+                              by = 0.25))
+rooster$class <- factor(logreg$coefficients[1] + logreg$coefficients[2]*rooster$x1 + logreg$coefficients[3]*rooster$x2 < 0, labels =levels(hotdog$class))
+ggplot(data=hotdog) + aes(x = x1, y = x2, colour = class) +
+  geom_point(data=rooster, size=0.5) +
+  geom_point() +
+  labs(title="Logreg1 on hotdog") +
+  JT.theme
+@
+
+\begin{marginfigure}
+\includegraphics[width=1\textwidth]{NN-logreg1}
+\caption{}
+\label{fig:logreg1}
+\setfloatalignment{b}% forces caption to be bottom-aligned
+\end{marginfigure}
+
+
+\end{document}
