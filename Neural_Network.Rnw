@@ -167,5 +167,27 @@ ggplot(data=hotdog) + aes(x = x1, y = x2, colour = class) +
 \setfloatalignment{b}% forces caption to be bottom-aligned
 \end{marginfigure}
 
+The general linear model gives the equation for a plane in the (x, y, z)-space. R has the function\emph{persp} to make a 3D-representation. As parameters it requires:
+
+\begin{itemize}
+  \item a sequence of values along the x-axis (here for example seq(-11, 11, 1))
+  \item a sequence of values along the y-axis (here for example seq(-11, 11, 1))
+  \item a matrix z of the function values of z=f(x,y).
+\end{itemize}
+
+<<label=logreg13D,fig=TRUE,include=FALSE, echo=FALSE>>=
+x3D <- seq(min(hotdog$x1 - 1), max(hotdog$x1 + 1),by = 0.25)
+y3D <- seq(min(hotdog$x2 - 1), max(hotdog$x2 + 1),by = 0.25)
+z3D <- matrix(logreg$coefficients[1] + logreg$coefficients[2]*rooster$x1 + logreg$coefficients[3]*rooster$x2, nrow=length(x3D), ncol=length(y3D))
+persp(x3D, y3D, z3D, phi = 45, theta = 45, xlab = "x1", ylab = "x2", main = "z")
+@
+
+\begin{marginfigure}
+\includegraphics[width=1\textwidth]{NN-logreg13D}
+\caption{}
+\label{fig:logreg13D}
+\setfloatalignment{b}% forces caption to be bottom-aligned
+\end{marginfigure}
+
 
 \end{document}
