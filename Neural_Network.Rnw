@@ -124,6 +124,7 @@ I have digitized their sample set\sidenote{WebDigitizer}.
 
 <<label=hotdog_data,fig=TRUE,include=FALSE, echo=FALSE>>=
 hotdog <- read.csv("data/hotdog.csv", header=TRUE, sep=";", dec=".", na.strings="NA")
+hotdog$type <- ifelse(hotdog$class=="hot dog", 1, 0)
 ggplot(data=hotdog) +
   geom_point(aes(x = x1, y = x2, colour = class)) +
   labs(title="Dataset hotdog") +
@@ -140,8 +141,11 @@ ggplot(data=hotdog) +
 Fitting a logistic regression model in R is easy:
 
 <<>>=
-logreg <- glm(class ~x1 + x2, family=binomial, data=hotdog)
+logreg <- glm(type ~ x1 + x2, family=binomial, data=hotdog)
 summary(logreg)
+hotdog$reg <- logreg$coefficients[1] + 
+  logreg$coefficients[2]*hotdog$x1 + 
+  logreg$coefficients[3]*hotdog$x2
 @
 
 We make a grid (''rooster" in Dutch) and calculate the value of that gridpoint based on the coordinates x1 and x2 and the function given by the logistic regression model. Negative values are classed as ''not hot dog", positive values as ''hot dog". It clearly is a poor model.
@@ -168,7 +172,7 @@ ggplot(data=hotdog) + aes(x = x1, y = x2, colour = class) +
 \setfloatalignment{b}% forces caption to be bottom-aligned
 \end{marginfigure}
 
-The general linear model gives the equation for a plane in the (x, y, z)-space. R has the function\emph{persp} to make a 3D-representation. As parameters it requires:
+The general linear model gives the equation for a plane in the (x, y, z)-space. R has the function \emph{persp} to make a 3D-representation. As parameters it requires:
 
 \begin{itemize}
   \item a sequence of values along the x-axis (here for example seq(-11, 11, 1))
@@ -176,39 +180,43 @@ The general linear model gives the equation for a plane in the (x, y, z)-space. 
   \item a matrix z of the function values of z=f(x,y).
 \end{itemize}
 
-<<label=logreg13D,fig=TRUE,include=FALSE, echo=FALSE>>=
-x3D <- seq(-11, 11, by = 1)
-y3D <- seq(-11, 11, by = 1)
-rooster3D <- expand.grid(x1=x3D, x2=x3D) 
-z3D <- matrix(logreg$coefficients[1] + logreg$coefficients[2]*rooster3D$x1 + logreg$coefficients[3]*rooster3D$x2, nrow=length(x3D), ncol=length(y3D))
-persp(x3D, y3D, z3D, phi = 45, theta = 45, xlab = "x1", ylab = "x2", main = "z")
-@
-
-\begin{marginfigure}
-\includegraphics[width=1\textwidth]{NN-logreg13D}
-\caption{}
-\label{fig:logreg13D}
-\setfloatalignment{b}% forces caption to be bottom-aligned
-\end{marginfigure}
-
 \newpage
 <<label=scatter3D,fig=TRUE,include=FALSE, echo=FALSE>>=
+front <- hotdog %>% filter(hotdog$reg < 0)
+back <- hotdog %>% filter(hotdog$reg >= 0)
 shapes <- c(16, 17)
-shapes <- shapes[as.numeric(hotdog$class)]
-colors <- c("red", "steelblue")
-colors <- colors[as.numeric(hotdog$class)]
-s3d <- scatterplot3d(hotdog[,1:3], pch=shapes, color=colors,
-              angle=55,
-              main="scatter plot", xlab="x1", ylab="x2", zlab="class")
-my.lm <- lm(class ~ x1 + x2, hotdog)
-s3d$plane3d(my.lm)
+shapes <- shapes[as.numeric(front$class)]
+colors <- c("darksalmon", "steelblue")
+colors <- colors[as.numeric(front$class)]
+s3d <- scatterplot3d(front[,c(1, 2, 4)], pch=shapes, color=colors,
+              angle=60,
+              xlim=c(-11, 11), ylim=c(-11,11),
+              main="3D view of classification by glm-model", xlab="x1", ylab="x2", zlab="type")
+s3d$plane3d(logreg,  draw_polygon=TRUE)
+shapes <- c(16, 17)
+shapes <- shapes[as.numeric(back$class)]
+colors <- c("firebrick2", "darkslategray1")
+colors <- colors[as.numeric(back$class)]
+s3d$points3d(back[,c(1, 2, 4)], pch=shapes, col=colors)
+coord_bottom <- data.frame(x1=0, x2=seq(-11, 11, by=0.1), z=0)
+coord_bottom$x1 <- (-logreg$coefficients[1] - logreg$coefficients[3]*coord_bottom$x2)/logreg$coefficients[2]
+coord_top <- data.frame(x1=0, x2=seq(-11,11, by=0.1), z=1)
+coord_top$x1 <- (1 -logreg$coefficients[1] - logreg$coefficients[3]*coord_bottom$x2)/logreg$coefficients[2]
+s3d$points3d(coord_bottom, pch='-', col="green1")
+s3d$points3d(coord_top, pch='-', col="green1")
 @
 
-\begin{marginfigure}
-\includegraphics[width=1\textwidth]{NN-scatter3D}
+\begin{figure*}
+\includegraphics[width=0.85\textwidth]{NN-scatter3D}
 \caption{}
 \label{fig:scatter3D}
 \setfloatalignment{b}% forces caption to be bottom-aligned
-\end{marginfigure}
+\end{figure*}
 
+<<echo=FALSE>>=
+back %>% group_by(type) %>% summarise(n()) -> identify_hot_dog
+front %>% group_by(type) %>% summarise(n()) -> identify_not_hot_dog
+@
+
+The percentage of correctly identified objects is \Sexpr{round(100*(identify_hot_dog[2,2] + identify_not_hot_dog[1,2])/nrow(hotdog),2)}.
 \end{document}
